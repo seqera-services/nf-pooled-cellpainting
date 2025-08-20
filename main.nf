@@ -13,7 +13,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { NF-POOLED-CELLPAINTING  } from './workflows/nf-pooled-cellpainting'
+include { POOLED_CELLPAINTING  }    from './workflows/nf-pooled-cellpainting'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_nf-pooled-cellpainting_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_nf-pooled-cellpainting_pipeline'
 /*
@@ -25,21 +25,27 @@ include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_nf-p
 //
 // WORKFLOW: Run main analysis pipeline depending on type of input
 //
-workflow SEQERASERVICES_NF-POOLED-CELLPAINTING {
+workflow NF_POOLED_CELLPAINTING {
 
     take:
     samplesheet // channel: samplesheet read in from --input
 
     main:
 
+    cppipes = [
+        "${projectDir}/assets/cellprofiler/illumination.cppipe.jinja",
+    ]
+
     //
     // WORKFLOW: Run pipeline
     //
-    NF-POOLED-CELLPAINTING (
-        samplesheet
+    POOLED_CELLPAINTING (
+        samplesheet,
+        params.barcodes,
+        cppipes
     )
-    emit:
-    multiqc_report = NF-POOLED-CELLPAINTING.out.multiqc_report // channel: /path/to/multiqc_report.html
+    // emit:
+    // multiqc_report = POOLED_CELLPAINTING.out.multiqc_report // channel: /path/to/multiqc_report.html
 }
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,17 +71,17 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    SEQERASERVICES_NF-POOLED-CELLPAINTING (
+    NF_POOLED_CELLPAINTING (
         PIPELINE_INITIALISATION.out.samplesheet
     )
     //
     // SUBWORKFLOW: Run completion tasks
     //
-    PIPELINE_COMPLETION (
-        params.outdir,
-        params.monochrome_logs,
-        SEQERASERVICES_NF-POOLED-CELLPAINTING.out.multiqc_report
-    )
+    // PIPELINE_COMPLETION (
+    //     params.outdir
+    //     // params.monochrome_logs,
+    //     // POOLED_CELLPAINTING.out.multiqc_report
+    // )
 }
 
 /*
