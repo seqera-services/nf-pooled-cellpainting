@@ -56,37 +56,48 @@
             "properties": {
                 "cp_img_overlap_pct": {
                     "type": "integer",
-                    "default": 10
+                    "default": 10,
+                    "fa_icon": "fas fa-percentage"
                 },
                 "cp_img_frame_type": {
                     "type": "string",
-                    "default": "round"
+                    "default": "round",
+                    "fa_icon": "fas fa-crop-alt"
                 },
                 "cp_acquisition_order": {
                     "type": "string",
-                    "default": "snake"
+                    "default": "snake",
+                    "fa_icon": "fas fa-sort-amount-down"
+                },
+                "cp_multichannel_parallel": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-code-branch"
                 }
             }
         },
-        "new_group_2": {
-            "title": "New Group 2",
+        "sbs_options": {
+            "title": "Sequencing by Synthesis (SBS) options",
             "type": "object",
             "description": "",
             "default": "",
             "properties": {
                 "sbs_img_overlap_pct": {
                     "type": "integer",
-                    "default": 10
+                    "default": 10,
+                    "fa_icon": "fas fa-percentage"
                 },
                 "sbs_img_frame_type": {
                     "type": "string",
-                    "default": "round"
+                    "default": "round",
+                    "fa_icon": "fas fa-crop-alt"
                 },
                 "sbs_acquisition_order": {
                     "type": "string",
-                    "default": "snake"
+                    "default": "snake",
+                    "fa_icon": "fas fa-sort-amount-down"
                 }
-            }
+            },
+            "fa_icon": "fas fa-dna"
         },
         "institutional_config_options": {
             "title": "Institutional config options",
@@ -221,7 +232,7 @@
             "$ref": "#/$defs/cellpainting_options"
         },
         {
-            "$ref": "#/$defs/new_group_2"
+            "$ref": "#/$defs/sbs_options"
         },
         {
             "$ref": "#/$defs/institutional_config_options"

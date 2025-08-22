@@ -24,7 +24,8 @@ workflow POOLED_CELLPAINTING {
     take:
     ch_samplesheet // channel: samplesheet read in from --input
     barcodes       // file: path to barcodes.csv file
-    cppipes       // array: paths to cpipe jinja files
+    cppipes       // array: paths to cpipe template files
+    cp_multichannel_parallel // boolean: whether to run cell painting in parallel for multi-channel images per FOV
 
     main:
 
@@ -42,19 +43,19 @@ workflow POOLED_CELLPAINTING {
         }
         .set { ch_samplesheet_split }
 
-    // Split channels by comma to create separate channels for each channel name
     ch_samplesheet_cp = ch_samplesheet_split.cp
         .flatMap { meta, image ->
             // Split channels by comma and create a separate entry for each channel
+            meta.original_channels = meta.channels
             def channels_string = meta.channels.split(',')
-            if (channels_string.size() > 1) {
+            if (channels_string.size() > 1 & cp_multichannel_parallel) {
                 return channels_string.collect { channel_name ->
                     def new_meta = meta.clone()
-                    new_meta.remove('channels') // Remove the original comma-separated field
                     new_meta.channels = channel_name.trim()
                     [new_meta, image]
                 }
             } else {
+                meta.remove('original_channels')
                 return [[meta, image]]
             }
         }
@@ -64,7 +65,8 @@ workflow POOLED_CELLPAINTING {
     // Process cell painting (CP) data
     CELLPAINTING (
         ch_samplesheet_cp,
-        cppipes
+        cppipes,
+        cp_multichannel_parallel
     )
 
     // Process sequencing by synthesis (SBS) data

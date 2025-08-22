@@ -27,10 +27,28 @@ workflow CELLPROFILER_LOAD_DATA_CSV {
     ch_images_grouped
         .map { group_meta, meta_list, image_list ->
             // Derive channels dynamically from the metadata in this group
-            def image_channels = meta_list.collect { it.channels }.unique()
+            // Determine if we're dealing with single-channel processing (after splitting) or multi-channel
+            def has_original_channels = meta_list.any { it.original_channels != null }
+            def current_channels = meta_list.collect { it.channels }.unique()
+            def all_single_channels = current_channels.every { !it.contains(',') }
+            
+            def image_channels_header
+            if (all_single_channels && has_original_channels) {
+                // Scenario 2: Single channels after splitting, use only the current channels
+                image_channels_header = current_channels
+            } else if (all_single_channels && !has_original_channels) {
+                // Scenario 1: Single channels without splitting
+                image_channels_header = current_channels
+            } else {
+                // Scenario 3: Multi-channel images, split them into individual channels
+                image_channels_header = meta_list.collect { meta ->
+                    meta.channels.contains(',') ? meta.channels.split(',').collect { it.trim() } : [meta.channels]
+                }.flatten().unique()
+            }
+
 
             // def header = "FileName_Orig" + image_channels.join(',FileName_Orig') + ",Metadata_Batch,Metadata_Plate,Metadata_Well,Metadata_Col,Metadata_Row,Metadata_Site"
-            def header = "Metadata_Plate,Metadata_Well,Metadata_Site," + "FileName_Orig" + image_channels.join(',FileName_Orig')+ "," + "Frame_Orig" + image_channels.join(',Frame_Orig')
+            def header = "Metadata_Plate,Metadata_Well,Metadata_Site," + "FileName_Orig" + image_channels_header.join(',FileName_Orig')+ "," + "Frame_Orig" + image_channels_header.join(',Frame_Orig')
 
             // Group by well+site within this group so we can create a single row per well+site
             def grouped_by_well = [meta_list, image_list].transpose().collect { meta, image ->
@@ -49,15 +67,50 @@ workflow CELLPROFILER_LOAD_DATA_CSV {
                     [channels, image]
                 }
 
-                // Create a list of the image filenames in the order of the image_channels
-                def image_filenames = image_channels.collect { channels ->
-                    images_by_channel[channels] ? "\"${images_by_channel[channels].name}\"" : "\"\""
-                }
-
-                // Create a list of the image frames in the order of the image_channels
-                def image_frames = image_channels.collect { channels ->
-                    images_by_channel[channels] ? image_channels.indexOf(channels) : ""
-                }
+                // Create lists of image filenames and frames in the order of the image_channels_header
+                def (image_filenames, image_frames) = image_channels_header.collect { channel ->
+                    // Find which channels string contains this channel
+                    def matching_channels = images_by_channel.keySet().find { channels_string ->
+                        channels_string.contains(',') ? 
+                            channels_string.split(',').collect { it.trim() }.contains(channel) :
+                            channels_string == channel
+                    }
+                    
+                    if (matching_channels) {
+                        def filename = "\"${images_by_channel[matching_channels].name}\""
+                        def frame
+                        
+                        // Calculate frame based on the scenario
+                        if (all_single_channels && has_original_channels) {
+                            // Scenario 2: Single channels after splitting, use original_channels for frame calculation
+                            def meta_for_image = [meta_list, image_list].transpose().find { _meta, _image -> 
+                                _image == images_by_channel[matching_channels] 
+                            }[0]
+                            
+                            if (meta_for_image.original_channels && meta_for_image.original_channels.contains(',')) {
+                                def split_channels = meta_for_image.original_channels.split(',').collect { it.trim() }
+                                frame = split_channels.indexOf(channel)
+                            } else {
+                                frame = 0
+                            }
+                        } else if (all_single_channels && !has_original_channels) {
+                            // Scenario 1: Single channels without splitting, frame is always 0
+                            frame = 0
+                        } else {
+                            // Scenario 3: Multi-channel images, calculate frame from the channel string
+                            if (matching_channels.contains(',')) {
+                                def split_channels = matching_channels.split(',').collect { it.trim() }
+                                frame = split_channels.indexOf(channel)
+                            } else {
+                                frame = 0
+                            }
+                        }
+                        
+                        [filename, frame]
+                    } else {
+                        ["\"\"", ""]
+                    }
+                }.transpose()
 
                 // Add metadata columns
                 def row = [row_meta.plate, row_meta.well, row_meta.site] + image_filenames + image_frames

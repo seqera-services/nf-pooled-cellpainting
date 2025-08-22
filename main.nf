@@ -33,7 +33,7 @@ workflow NF_POOLED_CELLPAINTING {
     main:
 
     cppipes = [
-        "${projectDir}/assets/cellprofiler/illumination.cppipe.jinja",
+        'illumination_calc' : params.cp_illum_calc_pipe ?: "${projectDir}/assets/cellprofiler/illumination.cppipe.template",
     ]
 
     //
@@ -42,7 +42,8 @@ workflow NF_POOLED_CELLPAINTING {
     POOLED_CELLPAINTING (
         samplesheet,
         params.barcodes,
-        cppipes
+        cppipes,
+        params.cp_multichannel_parallel
     )
     // emit:
     // multiqc_report = POOLED_CELLPAINTING.out.multiqc_report // channel: /path/to/multiqc_report.html
